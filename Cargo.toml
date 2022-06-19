@@ -1,5 +1,5 @@
 [package]
-name = "peach_captain_falcon"
+name = "smash-utils"
 version = "0.1.0"
 authors = ["VinegarChicken"]
 edition = "2018"
