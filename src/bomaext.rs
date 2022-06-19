@@ -1,5 +1,6 @@
 //most of this is from https://github.com/HDR-Development/HewDraw-Remix
 
+
 use smash::app::{
     self,
     *,
@@ -25,7 +26,7 @@ pub enum AerialKind {
     Dair
 }
 
-pub trait BomaExt {
+pub trait BomaExt{
     // INPUTS
     unsafe fn is_cat_flag<T: Into<CommandCat>>(&mut self, fighter_pad_cmd_flag: T) -> bool;
     unsafe fn is_cat_flag_all<T: Into<CommandCat>>(&mut self, fighter_pad_cmd_flag: T) -> bool;
@@ -75,7 +76,7 @@ pub trait BomaExt {
     unsafe fn set_joint_scale(&mut self, joint: Hash40, scale: *const Vector3f);
     unsafe fn is_in_hitlag(&mut self) -> bool;
 
-    unsafe fn get_owner_boma(&mut self) -> BattleObjectModuleAccessor;
+    unsafe fn get_owner_boma(&mut self) -> *mut BattleObjectModuleAccessor;
 
     unsafe fn change_status_req(&mut self, kind: i32, repeat: bool) -> i32;
 
@@ -104,7 +105,7 @@ pub trait BomaExt {
 
 }
 
-impl BomaExt for BattleObjectModuleAccessor {
+impl BomaExt for smash::app::BattleObjectModuleAccessor {
     unsafe fn is_cat_flag<T: Into<CommandCat>>(&mut self, fighter_pad_cmd_flag: T) -> bool {
         let cat = fighter_pad_cmd_flag.into();
         match cat {
@@ -316,8 +317,8 @@ impl BomaExt for BattleObjectModuleAccessor {
         return false;
     }
 
-    unsafe fn get_owner_boma(&mut self) -> BattleObjectModuleAccessor {
-        *smash::app::sv_battle_object::module_accessor((WorkModule::get_int(self, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER)) as u32)
+    unsafe fn get_owner_boma(&mut self) -> *mut BattleObjectModuleAccessor {
+        smash::app::sv_battle_object::module_accessor((WorkModule::get_int(self, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER)) as u32)
     }
 
     unsafe fn change_status_req(&mut self, kind: i32, repeat: bool) -> i32 {
