@@ -3,6 +3,6 @@
 #![feature(asm)]
 
 
-mod utils;
-mod extensions;
-mod cmdflag;
+pub mod utils;
+pub mod extensions;
+pub mod cmdflag;

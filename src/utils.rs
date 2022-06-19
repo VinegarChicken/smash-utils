@@ -11,7 +11,10 @@ use smash::{
     phx::{Hash40, Vector3f},
     *,
 };
-use smash::app::FighterEntryID;
+use smash::app::{BattleObject, FighterEntryID};
+
+#[skyline::from_offset(0x3ac540)]
+pub fn get_battle_object_from_id(id: u32) -> *mut BattleObject;
 
 extern "C" {
     #[link_name = "_ZN3lib9SingletonIN3app14FighterManagerEE9instance_E"]
@@ -62,7 +65,8 @@ pub unsafe fn change_motion_inherit(module_accessor: *mut BattleObjectModuleAcce
         1.0,
         0.0,
         false,
-        false);
+        false
+    );
 }
 
 pub unsafe fn get_entry_id(module_accessor: *mut BattleObjectModuleAccessor) -> usize {

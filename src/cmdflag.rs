@@ -1,4 +1,6 @@
 use bitflags::bitflags;
+use smash::app::BattleObjectModuleAccessor;
+use smash::app::lua_bind::ControlModule;
 
 #[derive(Copy, Clone)]
 pub enum CommandCat {
@@ -6,7 +8,6 @@ pub enum CommandCat {
     Cat2(Cat2),
     Cat3(Cat3),
     Cat4(Cat4),
-    CatHdr(CatHdr)
 }
 
 impl Into<CommandCat> for Cat1 {
@@ -32,10 +33,35 @@ impl Into<CommandCat> for Cat4 {
         CommandCat::Cat4(self)
     }
 }
+impl Cat1 {
+    pub fn new(boma: *mut BattleObjectModuleAccessor) -> Self {
+        unsafe {
+            Cat1::from_bits_unchecked(ControlModule::get_command_flag_cat(boma, 0))
+        }
+    }
+}
 
-impl Into<CommandCat> for CatHdr {
-    fn into(self) -> CommandCat {
-        CommandCat::CatHdr(self)
+impl Cat2 {
+    pub fn new(boma: *mut BattleObjectModuleAccessor) -> Self {
+        unsafe {
+            Cat2::from_bits_unchecked(ControlModule::get_command_flag_cat(boma, 1))
+        }
+    }
+}
+
+impl Cat3 {
+    pub fn new(boma: *mut BattleObjectModuleAccessor) -> Self {
+        unsafe {
+            Cat3::from_bits_unchecked(ControlModule::get_command_flag_cat(boma, 2))
+        }
+    }
+}
+
+impl Cat4 {
+    pub fn new(boma: *mut BattleObjectModuleAccessor) -> Self {
+        unsafe {
+            Cat4::from_bits_unchecked(ControlModule::get_command_flag_cat(boma, 3))
+        }
     }
 }
 
