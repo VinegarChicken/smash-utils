@@ -8,8 +8,7 @@ extern "C" {
 use smash::app::{
     self,
     *,
-    lua_bind::*,
-    FighterManager,
+    lua_bind::{*, FighterManager},
     FighterKineticEnergyMotion,
     FighterKineticEnergyController,
 };
@@ -20,7 +19,9 @@ use smash::lib::{
 };
 use smash::phx::*;
 use crate::cmdflag::*;
-use crate::utils::get_battle_object_from_id;
+
+#[skyline::from_offset(0x3ac540)]
+pub fn get_battle_object_from_id(id: u32) -> *mut BattleObject;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum AerialKind {
@@ -30,7 +31,6 @@ pub enum AerialKind {
     Uair,
     Dair
 }
-
 pub trait BomaExt{
     // INPUTS
     unsafe fn is_cat_flag<T: Into<CommandCat>>(&mut self, fighter_pad_cmd_flag: T) -> bool;
@@ -52,10 +52,10 @@ pub trait BomaExt{
     unsafe fn set_joint_rotate(&mut self, bone_name: &str, rotation: Vector3f);
     unsafe fn object(&mut self) -> *mut BattleObject;
     unsafe fn is_grounded(&mut self) -> bool;
-    unsafe fn change_motion(&mut self, motion_kind: Hash40);
+    unsafe fn change_motion(&mut self, motion_kind: Hash40, inherit: bool);
     unsafe fn set_position_lock(&mut self);
     unsafe fn unset_position_lock(&mut self);
-    unsafe fn set_position(&mut self, pos: Vector3f);
+    unsafe fn set_position(&mut self, pos: &Vector3f);
 
     /// returns whether or not the stick x is pointed in the "forwards" direction for
     /// a character
@@ -237,17 +237,30 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
         StatusModule::situation_kind(self) == *SITUATION_KIND_GROUND
     }
 
-    unsafe fn change_motion(&mut self, motion_kind: Hash40) {
-        MotionModule::change_motion(
-            self,
-            motion_kind,
-            0.0,
-            1.0,
-            false,
-            0.0,
-            false,
-            false,
-        );
+    unsafe fn change_motion(&mut self, motion_kind: Hash40, inherit: bool) {
+        if inherit{
+            MotionModule::change_motion_inherit_frame(
+                self,
+                motion_kind,
+                0.0,
+                1.0,
+                0.0,
+                false,
+                false
+            );
+        }
+        else{
+            MotionModule::change_motion(
+                self,
+                motion_kind,
+                0.0,
+                1.0,
+                false,
+                0.0,
+                false,
+                false,
+            );
+        }
     }
 
     unsafe fn set_position_lock(&mut self) {
@@ -255,11 +268,11 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
     }
 
     unsafe fn unset_position_lock(&mut self) {
-        FighterManager::unset_position_lock(FIGHTER_MANAGER, FighterEntryID(self.get_entry_id() as i32), true);
+        FighterManager::set_position_lock(FIGHTER_MANAGER, FighterEntryID(self.get_entry_id() as i32), false);
     }
 
     unsafe fn set_position(&mut self, pos: &Vector3f) {
-        PostureModule::set_pos(self, pos);
+        PostureModule::set_pos(self, *&pos);
     }
 
     /// returns whether or not the stick x is pointed in the "forwards" direction for
