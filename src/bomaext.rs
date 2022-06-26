@@ -1,10 +1,15 @@
-//most of this is from https://github.com/HDR-Development/HewDraw-Remix
+//much of this is from https://github.com/HDR-Development/HewDraw-Remix
 
+extern "C" {
+    #[link_name = "_ZN3lib9SingletonIN3app14FighterManagerEE9instance_E"]
+    pub static FIGHTER_MANAGER: *mut smash::app::FighterManager;
+}
 
 use smash::app::{
     self,
     *,
     lua_bind::*,
+    FighterManager,
     FighterKineticEnergyMotion,
     FighterKineticEnergyController,
 };
@@ -46,9 +51,16 @@ pub trait BomaExt{
     unsafe fn get_aerial(&mut self) -> Option<AerialKind>;
     unsafe fn set_joint_rotate(&mut self, bone_name: &str, rotation: Vector3f);
     unsafe fn object(&mut self) -> *mut BattleObject;
+    unsafe fn is_grounded(&mut self) -> bool;
+    unsafe fn change_motion(&mut self, motion_kind: Hash40);
+    unsafe fn set_position_lock(&mut self);
+    unsafe fn unset_position_lock(&mut self);
+    unsafe fn set_position(&mut self, pos: Vector3f);
+
     /// returns whether or not the stick x is pointed in the "forwards" direction for
     /// a character
     unsafe fn is_stick_forward(&mut self) -> bool;
+    unsafe fn get_entry_id(&mut self) -> usize;
 
     /// returns whether or not the stick x is pointed in the "backwards" direction for
     /// a character
@@ -221,6 +233,35 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
         get_battle_object_from_id(self.battle_object_id)
     }
 
+    unsafe fn is_grounded(&mut self) -> bool {
+        StatusModule::situation_kind(self) == *SITUATION_KIND_GROUND
+    }
+
+    unsafe fn change_motion(&mut self, motion_kind: Hash40) {
+        MotionModule::change_motion(
+            self,
+            motion_kind,
+            0.0,
+            1.0,
+            false,
+            0.0,
+            false,
+            false,
+        );
+    }
+
+    unsafe fn set_position_lock(&mut self) {
+        FighterManager::set_position_lock(FIGHTER_MANAGER, FighterEntryID(self.get_entry_id() as i32), true);
+    }
+
+    unsafe fn unset_position_lock(&mut self) {
+        FighterManager::unset_position_lock(FIGHTER_MANAGER, FighterEntryID(self.get_entry_id() as i32), true);
+    }
+
+    unsafe fn set_position(&mut self, pos: &Vector3f) {
+        PostureModule::set_pos(self, pos);
+    }
+
     /// returns whether or not the stick x is pointed in the "forwards" direction for
     /// a character
     unsafe fn is_stick_forward(&mut self) -> bool{
@@ -231,6 +272,10 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
             }
         }
         return false;
+    }
+
+    unsafe fn get_entry_id(&mut self) -> usize {
+        WorkModule::get_int(self, *FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID) as usize
     }
 
     /// returns whether or not the stick x is pointed in the "backwards" direction for
