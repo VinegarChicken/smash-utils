@@ -56,6 +56,7 @@ pub trait BomaExt{
     unsafe fn set_position_lock(&mut self);
     unsafe fn unset_position_lock(&mut self);
     unsafe fn set_position(&mut self, pos: &Vector3f);
+    unsafe fn is_damage_check(&mut self, is_prev: bool) -> bool;
 
     /// returns whether or not the stick x is pointed in the "forwards" direction for
     /// a character
@@ -274,6 +275,118 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
 
     unsafe fn set_position(&mut self, pos: &Vector3f) {
         PostureModule::set_pos(self, *&pos);
+    }
+
+    unsafe fn is_damage_check(&mut self, is_prev : bool) -> bool {
+        let status : i32;
+        if is_prev {
+            status = StatusModule::prev_status_kind(self, 0);
+        }
+        else {
+            status = StatusModule::status_kind(self);
+        }
+        if FighterStopModuleImpl::is_damage_stop(self) || CaptureModule::is_capture(self)
+            || WorkModule::is_flag(self, *FIGHTER_INSTANCE_WORK_ID_FLAG_CAPTURE_YOSHI)
+            || WorkModule::is_flag(self, *FIGHTER_INSTANCE_WORK_ID_FLAG_GANON_SPECIAL_S_DAMAGE_FALL_GROUND)
+            || WorkModule::is_flag(self, *FIGHTER_INSTANCE_WORK_ID_FLAG_GANON_SPECIAL_S_DAMAGE_FALL_AIR)
+            || [
+            *FIGHTER_STATUS_KIND_AIR_LASSO,
+            *FIGHTER_STATUS_KIND_BIND,
+            *FIGHTER_STATUS_KIND_BURY,
+            *FIGHTER_STATUS_KIND_BURY_WAIT,
+            *FIGHTER_STATUS_KIND_CAPTURE_BEETLE,
+            *FIGHTER_STATUS_KIND_CAPTURE_CUT,
+            *FIGHTER_STATUS_KIND_CAPTURE_DAMAGE,
+            *FIGHTER_STATUS_KIND_CAPTURE_DRIVER,
+            *FIGHTER_STATUS_KIND_CAPTURE_ITEM,
+            *FIGHTER_STATUS_KIND_CAPTURE_JACK_WIRE,
+            *FIGHTER_STATUS_KIND_CAPTURE_MASTERHAND,
+            *FIGHTER_STATUS_KIND_CAPTURE_MASTER_SWORD,
+            *FIGHTER_STATUS_KIND_CAPTURE_PULLED,
+            *FIGHTER_STATUS_KIND_CAPTURE_PULLED_FISHINGROD,
+            *FIGHTER_STATUS_KIND_CAPTURE_PULLED_PICKEL,
+            *FIGHTER_STATUS_KIND_CAPTURE_PULLED_YOSHI,
+            *FIGHTER_STATUS_KIND_CAPTURE_WAIT,
+            *FIGHTER_STATUS_KIND_CAPTURE_YOSHI,
+            *FIGHTER_STATUS_KIND_CATCHED_AIR_END_GANON,
+            *FIGHTER_STATUS_KIND_CATCHED_AIR_FALL_GANON,
+            *FIGHTER_STATUS_KIND_CATCHED_AIR_GANON,
+            *FIGHTER_STATUS_KIND_CATCHED_GANON,
+            *FIGHTER_STATUS_KIND_CATCHED_PICKEL_TROLLEY,
+            *FIGHTER_STATUS_KIND_CATCHED_REFLET,
+            *FIGHTER_STATUS_KIND_CATCHED_RIDLEY,
+            *FIGHTER_STATUS_KIND_SWING_GAOGAEN_CATCHED,
+            *FIGHTER_STATUS_KIND_CLUNG_CAPTAIN,
+            *FIGHTER_STATUS_KIND_CLUNG_DAMAGE_DIDDY,
+            *FIGHTER_STATUS_KIND_CLUNG_DIDDY,
+            *FIGHTER_STATUS_KIND_CLUNG_GANON,
+            *FIGHTER_STATUS_KIND_CLUNG_THROWN_BLANK_DIDDY,
+            *FIGHTER_STATUS_KIND_CLUNG_THROWN_DIDDY,
+            *FIGHTER_STATUS_KIND_DAMAGE,
+            *FIGHTER_STATUS_KIND_DAMAGE_AIR,
+            *FIGHTER_STATUS_KIND_DAMAGE_FALL,
+            *FIGHTER_STATUS_KIND_DAMAGE_FLY,
+            *FIGHTER_STATUS_KIND_DAMAGE_FLY_METEOR,
+            *FIGHTER_STATUS_KIND_DAMAGE_FLY_REFLECT_D,
+            *FIGHTER_STATUS_KIND_DAMAGE_FLY_REFLECT_JUMP_BOARD,
+            *FIGHTER_STATUS_KIND_DAMAGE_FLY_REFLECT_LR,
+            *FIGHTER_STATUS_KIND_DAMAGE_FLY_REFLECT_U,
+            *FIGHTER_STATUS_KIND_DAMAGE_FLY_ROLL,
+            *FIGHTER_STATUS_KIND_DAMAGE_SLEEP,
+            *FIGHTER_STATUS_KIND_DAMAGE_SLEEP_END,
+            *FIGHTER_STATUS_KIND_DAMAGE_SLEEP_FALL,
+            *FIGHTER_STATUS_KIND_DAMAGE_SLEEP_START,
+            *FIGHTER_STATUS_KIND_DAMAGE_SONG,
+            *FIGHTER_STATUS_KIND_DAMAGE_SONG_END,
+            *FIGHTER_STATUS_KIND_DAMAGE_SONG_FALL,
+            *FIGHTER_STATUS_KIND_DAMAGE_SONG_START,
+            *FIGHTER_STATUS_KIND_DEAD,
+            *FIGHTER_STATUS_KIND_DOWN,
+            *FIGHTER_STATUS_KIND_DOWN_DAMAGE,
+            *FIGHTER_STATUS_KIND_DOWN_EAT,
+            *FIGHTER_STATUS_KIND_DOWN_SPOT,
+            *FIGHTER_STATUS_KIND_DOWN_STAND,
+            *FIGHTER_STATUS_KIND_DOWN_STAND_FB,
+            *FIGHTER_STATUS_KIND_DOWN_WAIT,
+            *FIGHTER_STATUS_KIND_FINAL,
+            *FIGHTER_STATUS_KIND_FURAFURA,
+            *FIGHTER_STATUS_KIND_FURAFURA_END,
+            *FIGHTER_STATUS_KIND_FURAFURA_STAND,
+            *FIGHTER_STATUS_KIND_GUARD_DAMAGE,
+            *FIGHTER_STATUS_KIND_ICE,
+            *FIGHTER_STATUS_KIND_KOOPA_DIVED,
+            *FIGHTER_STATUS_KIND_LAY_DOWN,
+            *FIGHTER_STATUS_KIND_MEWTWO_THROWN,
+            *FIGHTER_STATUS_KIND_MISS_FOOT,
+            *FIGHTER_STATUS_KIND_PASSIVE,
+            *FIGHTER_STATUS_KIND_PASSIVE_CEIL,
+            *FIGHTER_STATUS_KIND_PASSIVE_FB,
+            *FIGHTER_STATUS_KIND_PASSIVE_WALL,
+            *FIGHTER_STATUS_KIND_REBIRTH,
+            *FIGHTER_STATUS_KIND_SAVING_DAMAGE,
+            *FIGHTER_STATUS_KIND_SAVING_DAMAGE_AIR,
+            *FIGHTER_STATUS_KIND_SAVING_DAMAGE_FLY,
+            *FIGHTER_STATUS_KIND_SHIELD_BREAK_DOWN,
+            *FIGHTER_STATUS_KIND_SHIELD_BREAK_FALL,
+            *FIGHTER_STATUS_KIND_SHIELD_BREAK_FLY,
+            *FIGHTER_STATUS_KIND_SLEEP,
+            *FIGHTER_STATUS_KIND_SLIP,
+            *FIGHTER_STATUS_KIND_SLIP_DAMAGE,
+            *FIGHTER_STATUS_KIND_SLIP_WAIT,
+            *FIGHTER_STATUS_KIND_SLIP_STAND,
+            *FIGHTER_STATUS_KIND_SLIP_STAND_B,
+            *FIGHTER_STATUS_KIND_SLIP_STAND_F,
+            *FIGHTER_STATUS_KIND_SLIP_STAND_ATTACK,
+            *FIGHTER_STATUS_KIND_STABBED_DAMAGE,
+            *FIGHTER_STATUS_KIND_STABBED_RIDLEY,
+            *FIGHTER_STATUS_KIND_SWALLOWED,
+            *FIGHTER_STATUS_KIND_THROWN,
+        ].contains(&status) {
+            true
+        }
+        else {
+            false
+        }
     }
 
     /// returns whether or not the stick x is pointed in the "forwards" direction for
