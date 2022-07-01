@@ -73,14 +73,14 @@ pub trait BomaExt{
     /// returns whether or not the stick x is pointed in the "forwards" direction for
     /// a character
     unsafe fn is_stick_forward(&mut self) -> bool;
-    unsafe fn get_entry_id(&mut self) -> usize;
+    unsafe fn entry_id(&mut self) -> usize;
     unsafe fn enable_jump(&mut self);
     unsafe fn suspend_energy(&mut self, energy: i32);
     /// returns whether or not the stick x is pointed in the "backwards" direction for
     /// a character
     unsafe fn is_stick_backward(&mut self) -> bool;
 
-    unsafe fn set_color_rgb(&mut self, r: f32, g: f32, b: f32, MODEL_COLOR_TYPE);
+    unsafe fn set_color_rgb(&mut self, r: f32, g: f32, b: f32, model_color_type: ModelColorType);
 
     // STATE
     unsafe fn is_status(&mut self, kind: i32) -> bool;
@@ -297,11 +297,11 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
     }
 
     unsafe fn set_position_lock(&mut self) {
-        FighterManager::set_position_lock(FIGHTER_MANAGER, FighterEntryID(self.get_entry_id() as i32), true);
+        FighterManager::set_position_lock(FIGHTER_MANAGER, FighterEntryID(self.entry_id() as i32), true);
     }
 
     unsafe fn unset_position_lock(&mut self) {
-        FighterManager::set_position_lock(FIGHTER_MANAGER, FighterEntryID(self.get_entry_id() as i32), false);
+        FighterManager::set_position_lock(FIGHTER_MANAGER, FighterEntryID(self.entry_id() as i32), false);
     }
 
     unsafe fn set_position(&mut self, pos: &Vector3f) {
@@ -432,7 +432,7 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
         return false;
     }
 
-    unsafe fn get_entry_id(&mut self) -> usize {
+    unsafe fn entry_id(&mut self) -> usize {
         WorkModule::get_int(self, *FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID) as usize
     }
     unsafe fn status_kind(&mut self) -> i32 {
