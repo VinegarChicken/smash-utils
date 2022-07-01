@@ -1,9 +1,8 @@
 //much of this is from https://github.com/HDR-Development/HewDraw-Remix
 
-extern "C" {
-    #[link_name = "_ZN3lib9SingletonIN3app14FighterManagerEE9instance_E"]
-    pub static FIGHTER_MANAGER: *mut smash::app::FighterManager;
-}
+
+#[repr(C)]
+pub struct ModelColorType(pub i32);
 
 use smash::app::{
     self,
@@ -22,6 +21,17 @@ use crate::cmdflag::*;
 
 #[skyline::from_offset(0x3ac540)]
 pub fn get_battle_object_from_id(id: u32) -> *mut BattleObject;
+
+extern "C" {
+    #[link_name = "\u{1}_ZN3app8lua_bind31ModelModule__set_color_rgb_implEPNS_26BattleObjectModuleAccessorEfffNS_16MODEL_COLOR_TYPEE"]
+    pub fn set_color_rgb(
+        arg1: *mut BattleObjectModuleAccessor,
+        arg2: f32,
+        arg3: f32,
+        arg4: f32,
+        arg5: ModelColorType,
+    );
+}
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum AerialKind {
@@ -57,15 +67,20 @@ pub trait BomaExt{
     unsafe fn unset_position_lock(&mut self);
     unsafe fn set_position(&mut self, pos: &Vector3f);
     unsafe fn is_damage_check(&mut self, is_prev: bool) -> bool;
-
+    unsafe fn situation_kind(&mut self) -> i32;
+    unsafe fn status_kind(&mut self) -> i32;
+    unsafe fn set_gravity(&mut self, disable: bool);
     /// returns whether or not the stick x is pointed in the "forwards" direction for
     /// a character
     unsafe fn is_stick_forward(&mut self) -> bool;
     unsafe fn get_entry_id(&mut self) -> usize;
+    unsafe fn enable_jump(&mut self);
 
     /// returns whether or not the stick x is pointed in the "backwards" direction for
     /// a character
     unsafe fn is_stick_backward(&mut self) -> bool;
+
+    unsafe fn set_color_rgb(&mut self, r: f32, g: f32, b: f32, MODEL_COLOR_TYPE);
 
     // STATE
     unsafe fn is_status(&mut self, kind: i32) -> bool;
@@ -201,7 +216,16 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
 
         return false;
     }
-
+    unsafe fn enable_jump(&mut self) {
+        if self.is_input_jump() {
+            if self.situation_kind() == *SITUATION_KIND_GROUND {
+                self.change_status(*FIGHTER_STATUS_KIND_JUMP_AERIAL, false);
+            }
+            else if self.get_num_used_jumps() < self.get_jump_count_max() {
+                self.change_status(*FIGHTER_STATUS_KIND_JUMP_AERIAL, false);
+            }
+        }
+    }
     unsafe fn is_input_jump(&mut self) -> bool {
         if self.is_cat_flag(Cat1::Jump) && ControlModule::is_enable_flick_jump(self) {
             WorkModule::set_int(self, 1, *FIGHTER_INSTANCE_WORK_ID_INT_STICK_JUMP_COMMAND_LIFE);
@@ -228,7 +252,9 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
             None
         }
     }
-
+    unsafe fn situation_kind(&mut self) -> i32 {
+        StatusModule::situation_kind(self)
+    }
     unsafe fn set_joint_rotate(&mut self, bone_name: &str, rotation: Vector3f) {
         ModelModule::set_joint_rotate(self, Hash40::new(&bone_name), &rotation, MotionNodeRotateCompose{_address: *MOTION_NODE_ROTATE_COMPOSE_AFTER as u8}, MotionNodeRotateOrder{_address: *MOTION_NODE_ROTATE_ORDER_XYZ as u8})
     }
@@ -406,6 +432,9 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
     unsafe fn get_entry_id(&mut self) -> usize {
         WorkModule::get_int(self, *FIGHTER_INSTANCE_WORK_ID_INT_ENTRY_ID) as usize
     }
+    unsafe fn status_kind(&mut self) -> i32 {
+        StatusModule::status_kind(self)
+    }
 
     /// returns whether or not the stick x is pointed in the "backwards" direction for
     /// a character
@@ -430,6 +459,15 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
 
     unsafe fn is_prev_status(&mut self, kind: i32) -> bool {
         return StatusModule::prev_status_kind(self, 0) == kind;
+    }
+
+    unsafe fn set_gravity(&mut self, disable: bool) {
+        if disable{
+            KineticModule::unable_energy(self, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
+        }
+        else{
+            KineticModule::enable_energy(self, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
+        }
     }
 
     unsafe fn is_prev_status_one_of(&mut self, kinds: &[i32]) -> bool {
@@ -492,7 +530,7 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
     }
 
     unsafe fn get_owner_boma(&mut self) -> *mut BattleObjectModuleAccessor {
-        smash::app::sv_battle_object::module_accessor((WorkModule::get_int(self, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER)) as u32)
+        smash::app::sv_battle_object::module_accessor(WorkModule::get_int(self, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER) as u32)
     }
 
     unsafe fn change_status(&mut self, kind: i32, repeat: bool) -> i32 {
@@ -570,5 +608,9 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
     /// gets the FighterKineticEnergyController object
     unsafe fn get_controller_energy(&mut self) -> &mut FighterKineticEnergyController {
         std::mem::transmute::<u64, &mut smash::app::FighterKineticEnergyController>(KineticModule::get_energy(self, *FIGHTER_KINETIC_ENERGY_ID_CONTROL))
+    }
+
+    unsafe fn set_color_rgb(&mut self, r: f32, g: f32, b: f32, model_color_type: ModelColorType){
+        set_color_rgb(self, r, g, b, model_color_type)
     }
 }
