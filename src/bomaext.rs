@@ -69,7 +69,7 @@ pub trait BomaExt{
     unsafe fn is_damage_check(&mut self, is_prev: bool) -> bool;
     unsafe fn situation_kind(&mut self) -> i32;
     unsafe fn status_kind(&mut self) -> i32;
-    unsafe fn set_gravity(&mut self, disable: bool);
+    unsafe fn set_gravity(&mut self, enable: bool);
     /// returns whether or not the stick x is pointed in the "forwards" direction for
     /// a character
     unsafe fn is_stick_forward(&mut self) -> bool;
@@ -464,12 +464,12 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
         return StatusModule::prev_status_kind(self, 0) == kind;
     }
 
-    unsafe fn set_gravity(&mut self, disable: bool) {
-        if disable{
-            KineticModule::unable_energy(self, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
+    unsafe fn set_gravity(&mut self, enable: bool) {
+        if enable{
+            KineticModule::enable_energy(self, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
         }
         else{
-            KineticModule::enable_energy(self, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
+            KineticModule::unable_energy(self, *FIGHTER_KINETIC_ENERGY_ID_GRAVITY);
         }
     }
 
