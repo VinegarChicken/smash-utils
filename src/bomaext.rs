@@ -77,7 +77,7 @@ pub trait BomaExt{
     unsafe fn is_motion(&mut self, motion: Hash40) -> bool;
     unsafe fn is_motion_one_of(&mut self, motions: &[Hash40]) -> bool;
     unsafe fn status(&mut self) -> i32;
-
+    unsafe fn enable_cancel(&mut self);
     /// gets the number of jumps that have been used
     unsafe fn get_num_used_jumps(&mut self) -> i32;
 
@@ -139,7 +139,9 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
             CommandCat::Cat4(cat) => Cat4::new(self).contains(cat),
         }
     }
-
+    unsafe fn enable_cancel(&mut self) {
+        CancelModule::enable_cancel(self);
+    }
     unsafe fn is_pad_flag(&mut self, pad_flag: PadFlag) -> bool {
         PadFlag::from_bits_unchecked(ControlModule::get_pad_flag(self)).intersects(pad_flag)
     }
