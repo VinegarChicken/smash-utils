@@ -18,7 +18,7 @@ use smash::lib::{
 };
 use smash::phx::*;
 use crate::cmdflag::*;
-
+use crate::utils::FIGHTER_MANAGER;
 #[skyline::from_offset(0x3ac540)]
 pub fn get_battle_object_from_id(id: u32) -> *mut BattleObject;
 
@@ -75,7 +75,7 @@ pub trait BomaExt{
     unsafe fn is_stick_forward(&mut self) -> bool;
     unsafe fn get_entry_id(&mut self) -> usize;
     unsafe fn enable_jump(&mut self);
-
+    unsafe fn suspend_energy(&mut self, energy: i32);
     /// returns whether or not the stick x is pointed in the "backwards" direction for
     /// a character
     unsafe fn is_stick_backward(&mut self) -> bool;
@@ -95,6 +95,9 @@ pub trait BomaExt{
     unsafe fn enable_cancel(&mut self);
     /// gets the number of jumps that have been used
     unsafe fn get_num_used_jumps(&mut self) -> i32;
+    unsafe fn is_motion_end(&mut self) -> bool;
+    unsafe fn current_frame_num(&mut self) -> f32;
+    unsafe fn motion_kind(&mut self) -> Hash40;
 
     /// gets the max allowed number of jumps for this character
     unsafe fn get_jump_count_max(&mut self) -> i32;
@@ -486,7 +489,9 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
     unsafe fn is_motion(&mut self, kind: Hash40) -> bool {
         return MotionModule::motion_kind(self) == kind.hash;
     }
-
+    unsafe fn is_motion_end(&mut self) -> bool {
+        MotionModule::is_end(self)
+    }
     unsafe fn is_motion_one_of(&mut self, kinds: &[Hash40]) -> bool {
         let kind = MotionModule::motion_kind(self);
         return kinds.contains(&Hash40::new_raw(kind));
@@ -528,7 +533,9 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
         }
         return false;
     }
-
+    unsafe fn suspend_energy(&mut self, energy: i32) {
+        KineticModule::suspend_energy(self, energy);
+    }
     unsafe fn get_owner_boma(&mut self) -> *mut BattleObjectModuleAccessor {
         smash::app::sv_battle_object::module_accessor(WorkModule::get_int(self, *WEAPON_INSTANCE_WORK_ID_INT_LINK_OWNER) as u32)
     }
@@ -612,5 +619,13 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
 
     unsafe fn set_color_rgb(&mut self, r: f32, g: f32, b: f32, model_color_type: ModelColorType){
         set_color_rgb(self, r, g, b, model_color_type)
+    }
+
+    unsafe fn current_frame_num(&mut self) -> f32 {
+        MotionModule::frame(self)
+    }
+
+    unsafe fn motion_kind(&mut self) -> Hash40 {
+        Hash40::new_raw(MotionModule::motion_kind(self))
     }
 }
