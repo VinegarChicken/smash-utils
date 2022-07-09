@@ -4,6 +4,7 @@
 #[repr(C)]
 pub struct ModelColorType(pub i32);
 
+use std::hash::Hash;
 use smash::app::{
     self,
     *,
@@ -18,7 +19,7 @@ use smash::lib::{
 };
 use smash::phx::*;
 use crate::cmdflag::*;
-use crate::utils::FIGHTER_MANAGER;
+use crate::utils::*;
 #[skyline::from_offset(0x3ac540)]
 pub fn get_battle_object_from_id(id: u32) -> *mut BattleObject;
 
@@ -33,14 +34,8 @@ extern "C" {
     );
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
-pub enum AerialKind {
-    Nair,
-    Fair,
-    Bair,
-    Uair,
-    Dair
-}
+
+
 pub trait BomaExt{
     // INPUTS
     unsafe fn is_cat_flag<T: Into<CommandCat>>(&mut self, fighter_pad_cmd_flag: T) -> bool;
@@ -64,12 +59,22 @@ pub trait BomaExt{
     unsafe fn is_grounded(&mut self) -> bool;
     unsafe fn change_motion(&mut self, motion_kind: Hash40, inherit: bool);
     unsafe fn set_position_lock(&mut self);
+    unsafe fn pos_x(&mut self) -> f32;
+    unsafe fn pos_y(&mut self) -> f32;
+    unsafe fn pos_z(&mut self) -> f32;
     unsafe fn unset_position_lock(&mut self);
-    unsafe fn set_position(&mut self, pos: &Vector3f);
+    unsafe fn set_position(&mut self, pos: *const Vector3f);
     unsafe fn is_damage_check(&mut self, is_prev: bool) -> bool;
     unsafe fn situation_kind(&mut self) -> i32;
     unsafe fn status_kind(&mut self) -> i32;
     unsafe fn set_gravity(&mut self, enable: bool);
+    unsafe fn play_se(&mut self, se: Hash40);
+    unsafe fn stop_all_sound(&mut self);
+    unsafe fn lr(&mut self) -> f32;
+    unsafe fn set_lr(&mut self, lr: f32);
+    unsafe fn get_caught_object_boma(&mut self) -> BattleObjectModuleAccessor;
+    unsafe fn enable_cancel_into(&mut self, cancel: CancelKind);
+    unsafe fn cancel_frame(&mut self) -> f32;
     /// returns whether or not the stick x is pointed in the "forwards" direction for
     /// a character
     unsafe fn is_stick_forward(&mut self) -> bool;
@@ -96,7 +101,6 @@ pub trait BomaExt{
     /// gets the number of jumps that have been used
     unsafe fn get_num_used_jumps(&mut self) -> i32;
     unsafe fn is_motion_end(&mut self) -> bool;
-    unsafe fn current_frame_num(&mut self) -> f32;
     unsafe fn motion_kind(&mut self) -> Hash40;
 
     /// gets the max allowed number of jumps for this character
@@ -106,6 +110,7 @@ pub trait BomaExt{
     unsafe fn set_scale(&mut self, scale: f32);
     unsafe fn set_joint_scale(&mut self, joint: Hash40, scale: *const Vector3f);
     unsafe fn is_in_hitlag(&mut self) -> bool;
+    unsafe fn is_infliction_status(&mut self, collision_kind_mask: i32) -> bool;
 
     unsafe fn get_owner_boma(&mut self) -> *mut BattleObjectModuleAccessor;
 
@@ -147,7 +152,9 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
             CommandCat::Cat4(cat) => Cat4::new(self).intersects(cat),
         }
     }
-
+    unsafe fn is_infliction_status(&mut self, collision_kind_mask: i32) -> bool {
+        AttackModule::is_infliction_status(self, collision_kind_mask)
+    }
     unsafe fn is_cat_flag_all<T: Into<CommandCat>>(&mut self, fighter_pad_cmd_flag: T) -> bool {
         let cat = fighter_pad_cmd_flag.into();
         match cat {
@@ -203,7 +210,9 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
     unsafe fn prev_stick_y(&mut self) -> f32 {
         return ControlModule::get_stick_prev_y(self);
     }
-
+    unsafe fn pos_x(&mut self) -> f32 { PostureModule::pos_x(self) }
+    unsafe fn pos_y(&mut self) -> f32 { PostureModule::pos_y(self) }
+    unsafe fn pos_z(&mut self) -> f32 { PostureModule::pos_z(self) }
     // TODO: Reimplement this check
     unsafe fn is_flick_y(&mut self, sensitivity: f32) -> bool {
         let stick = self.stick_y();
@@ -304,8 +313,8 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
         FighterManager::set_position_lock(FIGHTER_MANAGER, FighterEntryID(self.entry_id() as i32), false);
     }
 
-    unsafe fn set_position(&mut self, pos: &Vector3f) {
-        PostureModule::set_pos(self, *&pos);
+    unsafe fn set_position(&mut self, pos: *const Vector3f) {
+        PostureModule::set_pos(self, pos);
     }
 
     unsafe fn is_damage_check(&mut self, is_prev : bool) -> bool {
@@ -621,11 +630,98 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
         set_color_rgb(self, r, g, b, model_color_type)
     }
 
-    unsafe fn current_frame_num(&mut self) -> f32 {
-        MotionModule::frame(self)
-    }
 
     unsafe fn motion_kind(&mut self) -> Hash40 {
         Hash40::new_raw(MotionModule::motion_kind(self))
+    }
+
+    unsafe fn play_se(&mut self, se: Hash40) {
+        SoundModule::play_se(self, se, true, false, false, false, enSEType(0));
+    }
+
+    unsafe fn stop_all_sound(&mut self) {
+        SoundModule::stop_all_sound(self);
+    }
+
+    unsafe fn lr(&mut self) -> f32 {
+        PostureModule::lr(self)
+    }
+
+    unsafe fn set_lr(&mut self, lr: f32) {
+        PostureModule::set_lr(self, lr);
+    }
+
+    unsafe fn get_caught_object_boma(&mut self) -> Self {
+        *smash::app::sv_battle_object::module_accessor(self.get_int(*FIGHTER_STATUS_THROW_WORK_INT_TARGET_OBJECT) as u32)
+    }
+
+    unsafe fn enable_cancel_into(&mut self, cancel: CancelKind) {
+        match cancel {
+            CancelKind::Attack => {
+                if self.is_cat_flag(Cat1::AttackN){
+                    self.change_status(*FIGHTER_STATUS_KIND_ATTACK, false);
+                }
+            }
+            CancelKind::AttackS3 => {
+                if self.is_cat_flag(Cat1::AttackS3){
+                    self.change_status(*FIGHTER_STATUS_KIND_ATTACK_S3, false);
+                }
+            }
+            CancelKind::AttackHi3 => {
+                if self.is_cat_flag(Cat1::AttackHi3){
+                    self.change_status(*FIGHTER_STATUS_KIND_ATTACK_HI3, false);
+                }
+            }
+            CancelKind::Attacklw3 => {
+                if self.is_cat_flag(Cat1::AttackLw3){
+                    self.change_status(*FIGHTER_STATUS_KIND_ATTACK_LW3, false);
+                }
+            }
+            CancelKind::AttackS4 => {
+                if self.is_cat_flag(Cat1::AttackS4){
+                    self.change_status(*FIGHTER_STATUS_KIND_ATTACK_S4, false);
+                }
+            }
+            CancelKind::AttackHi4 => {
+                if self.is_cat_flag(Cat1::AttackHi4){
+                    self.change_status(*FIGHTER_STATUS_KIND_ATTACK_HI4, false);
+                }
+            }
+            CancelKind::AttackLw4 => {
+                if self.is_cat_flag(Cat1::AttackLw4){
+                    self.change_status(*FIGHTER_STATUS_KIND_ATTACK_LW4, false);
+                }
+            }
+            CancelKind::SpecialS => {
+                if self.is_cat_flag(Cat1::SpecialS){
+                    self.change_status(*FIGHTER_STATUS_KIND_SPECIAL_S, false);
+                }
+            }
+            CancelKind::SpecialHi => {
+                if self.is_cat_flag(Cat1::SpecialHi){
+                    self.change_status(*FIGHTER_STATUS_KIND_SPECIAL_HI, false);
+                }
+            }
+            CancelKind::SpecialN => {
+                if self.is_cat_flag(Cat1::SpecialN){
+                    self.change_status(*FIGHTER_STATUS_KIND_SPECIAL_N, false);
+                }
+            }
+            CancelKind::SpecialLw => {
+                if self.is_cat_flag(Cat1::SpecialLw){
+                    self.change_status(*FIGHTER_STATUS_KIND_SPECIAL_LW, false);
+                }
+            }
+            CancelKind::Catch => {
+                if self.is_cat_flag(Cat1::Catch){
+                    self.change_status(*FIGHTER_STATUS_KIND_CATCH, false);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    unsafe fn cancel_frame(&mut self) -> f32 {
+        FighterMotionModuleImpl::get_cancel_frame(self, self.motion_kind(), false)
     }
 }
