@@ -72,7 +72,7 @@ pub trait BomaExt{
     unsafe fn stop_all_sound(&mut self);
     unsafe fn lr(&mut self) -> f32;
     unsafe fn set_lr(&mut self, lr: f32);
-    unsafe fn get_caught_object_boma(&mut self) -> BattleObjectModuleAccessor;
+    unsafe fn get_caught_object_boma(&mut self) -> &mut BattleObjectModuleAccessor;
     unsafe fn enable_cancel_into(&mut self, cancel: CancelKind);
     unsafe fn cancel_frame(&mut self) -> f32;
     /// returns whether or not the stick x is pointed in the "forwards" direction for
@@ -651,8 +651,8 @@ impl BomaExt for smash::app::BattleObjectModuleAccessor {
         PostureModule::set_lr(self, lr);
     }
 
-    unsafe fn get_caught_object_boma(&mut self) -> Self {
-        *smash::app::sv_battle_object::module_accessor(self.get_int(*FIGHTER_STATUS_THROW_WORK_INT_TARGET_OBJECT) as u32)
+    unsafe fn get_caught_object_boma(&mut self) -> &mut Self {
+        &mut *smash::app::sv_battle_object::module_accessor(self.get_int(*FIGHTER_STATUS_THROW_WORK_INT_TARGET_OBJECT) as u32)
     }
 
     unsafe fn enable_cancel_into(&mut self, cancel: CancelKind) {
